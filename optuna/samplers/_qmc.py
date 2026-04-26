@@ -191,7 +191,17 @@ class QMCSampler(BaseSampler):
         past_trials = study._get_trials(deepcopy=False, states=_SUGGESTED_STATES, use_cache=True)
         # The initial trial is sampled by the independent sampler.
         if len(past_trials) == 0:
-            return {}
+            pending_trials = study._get_trials(
+                deepcopy=False, states=(TrialState.RUNNING, TrialState.WAITING), use_cache=True
+            )
+            if len(pending_trials) == 0:
+                return {}
+
+            union_search_space: dict[str, BaseDistribution] = {}
+            for t in pending_trials:
+                union_search_space.update(self._infer_initial_search_space(t))
+            return union_search_space
+
         # If an initial trial was already made,
         # construct search_space of this sampler from the initial trial.
         first_trial = min(past_trials, key=lambda t: t.number)

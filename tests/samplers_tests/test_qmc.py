@@ -67,8 +67,17 @@ def test_infer_relative_search_space() -> None:
     sampler = _init_QMCSampler_without_exp_warning()
     study = optuna.create_study(sampler=sampler)
     trial = Mock()
-    # In case no past trials.
+    # In case no past trials and no pending trials.
     assert sampler.infer_relative_search_space(study, trial) == {}
+
+    # In case there are pending trials but no past trials.
+    running_trial = study.ask()
+    running_trial.suggest_int("x1", 0, 10)
+    running_trial.suggest_categorical("x6", [1, 4, 7, 10])
+
+    speculative_space = sampler.infer_relative_search_space(study, trial)
+    assert set(speculative_space.keys()) == {"x1"}
+
     # In case there is a past trial.
     study.optimize(objective, n_trials=1)
     relative_search_space = sampler.infer_relative_search_space(study, trial)
